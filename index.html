@@ -1,123 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FISU Quiz Game</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    /* Global Styles */
-body {
-  font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(to right, #4facfe, #00f2fe);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
-  overflow: hidden;
-}
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(to right, #4facfe, #00f2fe);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
 
-/* Quiz Container */
-#quiz-container {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 15px;
-  padding: 40px;
-  width: 100%;
-  max-width: 600px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  text-align: center;
-  transition: transform 0.3s ease-in-out;
-}
+    #quiz-container {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 40px;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      transition: transform 0.3s ease-in-out;
+    }
 
-#quiz-container:hover {
-  transform: scale(1.05);
-}
+    #quiz-container:hover {
+      transform: scale(1.05);
+    }
 
-/* Buttons */
-button {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  background-color: #4facfe;
-  color: white;
-  font-size: 16px;
-  cursor: pointer;
-  margin: 10px;
-  transition: background-color 0.3s, transform 0.2s;
-}
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      background-color: #4facfe;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px;
+      transition: background-color 0.3s, transform 0.2s;
+    }
 
-button:hover {
-  background-color: #3a9de1;
-  transform: translateY(-3px);
-}
+    button:hover {
+      background-color: #3a9de1;
+      transform: translateY(-3px);
+    }
 
-button:active {
-  transform: translateY(1px);
-}
+    button:active {
+      transform: translateY(1px);
+    }
 
-/* Timer */
-#timer {
-  font-size: 18px;
-  color: #e74c3c;
-  margin-top: 15px;
-  animation: pulse 1s infinite;
-}
+    #timer {
+      font-size: 18px;
+      color: #e74c3c;
+      margin-top: 15px;
+      animation: pulse 1s infinite;
+    }
 
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-  100% {
-    opacity: 1;
-  }
-}
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
 
-/* Result */
-#result {
-  font-size: 18px;
-  margin-top: 15px;
-  font-weight: bold;
-}
+    #result {
+      font-size: 18px;
+      margin-top: 15px;
+      font-weight: bold;
+    }
 
-#score, #high-score {
-  font-size: 16px;
-  margin-top: 10px;
-  color: #333;
-}
+    #score, #high-score {
+      font-size: 16px;
+      margin-top: 10px;
+      color: #333;
+    }
 
-#leaderboard {
-  margin-top: 20px;
-  text-align: left;
-}
+    #leaderboard {
+      margin-top: 20px;
+      text-align: left;
+    }
 
-#leaderboard table {
-  width: 100%;
-  border-collapse: collapse;
-}
+    #leaderboard table {
+      width: 100%;
+      border-collapse: collapse;
+    }
 
-#leaderboard th, #leaderboard td {
-  padding: 8px;
-  text-align: left;
-  border-bottom: 1px solid #ddd;
-}
+    #leaderboard th, #leaderboard td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
 
-#leaderboard th {
-  background-color: #f2f2f2;
-}
-
+    #leaderboard th {
+      background-color: #f2f2f2;
+    }
   </style>
 </head>
 <body>
 
 <div id="quiz-container">
-  <h2>🏅 FISU Quiz Game</h2>
+  <h2>🏅 FISU Quiz Game (GPT Edition)</h2>
   <button id="startBtn" onclick="startGame()">Start Game</button>
 
-  <div id="quizContent">
+  <div id="quizContent" style="display:none;">
     <div id="question">Loading question...</div>
     <input type="text" id="answer" placeholder="Type your answer here">
     <br>
@@ -133,10 +120,10 @@ button:active {
       <h3>🏆 Leaderboard</h3>
       <table>
         <thead>
-          <tr>
-            <th>Name</th>
-            <th>Score</th>
-          </tr>
+        <tr>
+          <th>Name</th>
+          <th>Score</th>
+        </tr>
         </thead>
         <tbody id="leaderboardList"></tbody>
       </table>
@@ -145,30 +132,7 @@ button:active {
 </div>
 
 <script>
-  const quizData = [
-  { question: "Which city hosted the 2021 Summer Universiade?", answer: "Chengdu" },
-  { question: "What does FISU stand for?", answer: "International University Sports Federation" },
-  { question: "How often are the Summer Universiade games held?", answer: "Every two years" },
-  { question: "Which country has won the most medals in Summer Universiade history?", answer: "Russia" },
-  { question: "Which sport is **not** traditionally part of the Universiade?", answer: "Cricket" },
-  { question: "When was the first Summer Universiade held?", answer: "1959" },
-  { question: "Which city will host the 2025 Summer Universiade?", answer: "Rhine-Ruhr" },
-  { question: "Who is eligible to compete in the FISU games?", answer: "University students aged 17–25" },
-  { question: "What is the maximum number of sports allowed in a Summer Universiade?", answer: "18" },
-  { question: "Which country hosted the first Universiade?", answer: "Italy" },
-  { question: "What year did FISU officially form?", answer: "1949" },
-  { question: "Which two countries often dominate the Universiade medal table?", answer: "Russia and China" },
-  { question: "What is the mascot of the 2021 Chengdu Universiade?", answer: "Rongbao the panda" },
-  { question: "In which city was the 2019 Summer Universiade held?", answer: "Naples" },
-  { question: "Which sport debuted at the Universiade in 2003?", answer: "Taekwondo" },
-  { question: "What colors are in the FISU flag?", answer: "White with five stars in blue, yellow, black, green, and red" },
-  { question: "Which continent has hosted the most Universiade games?", answer: "Europe" },
-  { question: "Which year did the Universiade introduce the Winter Games?", answer: "1960" },
-  { question: "What is the motto of the FISU Games?", answer: "Excellence in Mind and Body" },
-  { question: "Which country hosted both Summer and Winter Universiade in the same year?", answer: "Russia (2013)" }
-]
-
-
+  let quizData = [];
   let shuffledQuestions = [];
   let currentQuestion = 0;
   let score = 0;
@@ -196,6 +160,27 @@ button:active {
     return shuffled;
   }
 
+  async function fetchGPTQuestion() {
+    try {
+      const res = await fetch('https://your-backend.onrender.com/generate-question', {
+        method: 'POST'
+      });
+      const data = await res.json();
+      const parsed = JSON.parse(data.text);
+
+      if (parsed.question && parsed.answer) {
+        quizData.push(parsed);
+        shuffledQuestions = shuffleArray(quizData);
+        loadQuestion();
+      } else {
+        questionEl.textContent = "❌ Failed to load question.";
+      }
+    } catch (error) {
+      console.error('Error fetching GPT question:', error);
+      questionEl.textContent = "⚠️ Error loading question.";
+    }
+  }
+
   function startGame() {
     playerName = prompt("Enter your name:");
     if (!playerName) {
@@ -208,12 +193,11 @@ button:active {
     currentQuestion = 0;
     scoreEl.textContent = '';
     resultEl.textContent = '';
-    shuffledQuestions = shuffleArray(quizData);
-    loadQuestion();
+    fetchGPTQuestion();
   }
 
   function loadQuestion() {
-    if (currentQuestion < shuffledQuestions.length) {
+    if (shuffledQuestions[currentQuestion]) {
       questionEl.textContent = shuffledQuestions[currentQuestion].question;
       answerInput.value = '';
       answerInput.disabled = false;
@@ -222,7 +206,7 @@ button:active {
       updateTimer();
       startTimer();
     } else {
-      endQuiz();
+      questionEl.textContent = "No question loaded.";
     }
   }
 
@@ -236,7 +220,7 @@ button:active {
         resultEl.textContent = `⏰ Time's up! Correct answer: ${shuffledQuestions[currentQuestion].answer}`;
         answerInput.disabled = true;
         currentQuestion++;
-        setTimeout(loadQuestion, 2000);
+        setTimeout(fetchGPTQuestion, 2000);
       }
     }, 1000);
   }
@@ -260,14 +244,14 @@ button:active {
     answerInput.disabled = true;
     scoreEl.textContent = `Score: ${score}`;
     currentQuestion++;
-    setTimeout(loadQuestion, 2000);
+    setTimeout(fetchGPTQuestion, 2000);
   }
 
   function skipQuestion() {
     clearInterval(timerInterval);
     resultEl.textContent = `⏭️ Skipped. Correct answer was: ${shuffledQuestions[currentQuestion].answer}`;
     currentQuestion++;
-    setTimeout(loadQuestion, 2000);
+    setTimeout(fetchGPTQuestion, 2000);
   }
 
   function endQuiz() {
@@ -276,7 +260,7 @@ button:active {
     document.querySelectorAll('button').forEach(btn => btn.style.display = "none");
     playAgainBtn.style.display = "inline-block";
     timerEl.style.display = "none";
-    scoreEl.textContent = `Final Score: ${score} / ${shuffledQuestions.length}`;
+    scoreEl.textContent = `Final Score: ${score}`;
 
     updateLeaderboard();
   }
