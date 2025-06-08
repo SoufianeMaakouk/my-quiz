@@ -1,298 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FISU Quiz Game</title>
+  <meta charset="UTF-8">
+  <title>FISU AI Quiz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-      font-family: 'Arial', sans-serif;
+      font-family: sans-serif;
       background: linear-gradient(to right, #4facfe, #00f2fe);
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
       margin: 0;
-      overflow: hidden;
     }
-
-    #quiz-container {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border-radius: 15px;
-      padding: 40px;
-      width: 100%;
-      max-width: 600px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    #quiz-box {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 500px;
       text-align: center;
-      transition: transform 0.3s ease-in-out;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
     }
-
-    #quiz-container:hover {
-      transform: scale(1.05);
-    }
-
     button {
-      padding: 12px 24px;
-      border: none;
-      border-radius: 8px;
-      background-color: #4facfe;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
       margin: 10px;
-      transition: background-color 0.3s, transform 0.2s;
-    }
-
-    button:hover {
-      background-color: #3a9de1;
-      transform: translateY(-3px);
-    }
-
-    button:active {
-      transform: translateY(1px);
-    }
-
-    #timer {
-      font-size: 18px;
-      color: #e74c3c;
-      margin-top: 15px;
-      animation: pulse 1s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
-
-    #result {
-      font-size: 18px;
-      margin-top: 15px;
-      font-weight: bold;
-    }
-
-    #score, #high-score {
+      padding: 10px 20px;
       font-size: 16px;
+    }
+    #question {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    #result {
       margin-top: 10px;
-      color: #333;
-    }
-
-    #leaderboard {
-      margin-top: 20px;
-      text-align: left;
-    }
-
-    #leaderboard table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    #leaderboard th, #leaderboard td {
-      padding: 8px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-    }
-
-    #leaderboard th {
-      background-color: #f2f2f2;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
 
-<div id="quiz-container">
-  <h2>🏅 FISU Quiz Game </h2>
-  <button id="startBtn" onclick="startGame()">Start Game</button>
-
-  <div id="quizContent" style="display:none;">
-    <div id="question">Loading question...</div>
-    <input type="text" id="answer" placeholder="Type your answer here">
-    <br>
-    <button onclick="checkAnswer()">Submit</button>
-    <button onclick="skipQuestion()">Next Question</button>
-    <button id="playAgainBtn" onclick="restartGame()" style="display: none;">🔁 Play Again</button>
-    <div id="timer"></div>
-    <div id="result"></div>
-    <div id="score"></div>
-    <div id="high-score"></div>
-
-    <div id="leaderboard">
-      <h3>🏆 Leaderboard</h3>
-      <table>
-        <thead>
-        <tr>
-          <th>Name</th>
-          <th>Score</th>
-        </tr>
-        </thead>
-        <tbody id="leaderboardList"></tbody>
-      </table>
-    </div>
-  </div>
+<div id="quiz-box">
+  <h2>🏅 FISU AI Quiz</h2>
+  <div id="question">Click Start to get a question</div>
+  <input type="text" id="answer" placeholder="Your answer" />
+  <br>
+  <button onclick="checkAnswer()">Submit</button>
+  <button onclick="loadQuestion()">Next Question</button>
+  <div id="result"></div>
 </div>
 
 <script>
-  let quizData = [];
-  let shuffledQuestions = [];
-  let currentQuestion = 0;
-  let score = 0;
-  let timeLeft = 15;
-  let timerInterval;
-  let playerName = '';
+  let currentAnswer = "";
 
-  const questionEl = document.getElementById('question');
-  const answerInput = document.getElementById('answer');
-  const resultEl = document.getElementById('result');
-  const scoreEl = document.getElementById('score');
-  const highScoreEl = document.getElementById('high-score');
-  const timerEl = document.getElementById('timer');
-  const leaderboardList = document.getElementById('leaderboardList');
-  const quizContent = document.getElementById('quizContent');
-  const startBtn = document.getElementById('startBtn');
-  const playAgainBtn = document.getElementById('playAgainBtn');
-
-  function shuffleArray(array) {
-    let shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  }
-
-  async function fetchQuestionFromBackend() {
-  const res = await fetch('https://quiz-backend-8ug1.onrender.com/question');
-  const data = await res.json();
-  return data;
-});
+  async function loadQuestion() {
+    document.getElementById('result').textContent = '';
+    document.getElementById('answer').value = '';
+    try {
+      const res = await fetch("https://quiz-backend-8ug1.onrender.com/question");
       const data = await res.json();
-      const parsed = JSON.parse(data.text);
-
-      if (parsed.question && parsed.answer) {
-        quizData.push(parsed);
-        shuffledQuestions = shuffleArray(quizData);
-        loadQuestion();
-      } else {
-        questionEl.textContent = "❌ Failed to load question.";
-      }
-    } catch (error) {
-      console.error('Error fetching GPT question:', error);
-      questionEl.textContent = "⚠️ Error loading question.";
+      document.getElementById('question').textContent = data.question;
+      currentAnswer = data.answer.trim().toLowerCase();
+    } catch (err) {
+      document.getElementById('question').textContent = "Failed to load question.";
     }
-  }
-
-  function startGame() {
-    playerName = prompt("Enter your name:");
-    if (!playerName) {
-      alert("Name is required to play.");
-      return;
-    }
-    startBtn.style.display = 'none';
-    quizContent.style.display = 'block';
-    score = 0;
-    currentQuestion = 0;
-    scoreEl.textContent = '';
-    resultEl.textContent = '';
-    fetchGPTQuestion();
-  }
-
-  fasync function loadQuestion() {
-  const data = await fetchQuestionFromBackend();
-  if (!data || !data.question || !data.answer) {
-    questionEl.textContent = "⚠️ Failed to load question.";
-    return;
-  }
-  questionEl.textContent = data.question;
-  answerInput.value = '';
-  currentAnswer = data.answer; // save correct answer for check
-  answerInput.disabled = false;
-  resultEl.textContent = '';
-  timeLeft = 15;
-  updateTimer();
-  startTimer();
-}
-
-  function startTimer() {
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-      timeLeft--;
-      updateTimer();
-      if (timeLeft <= 0) {
-        clearInterval(timerInterval);
-        resultEl.textContent = `⏰ Time's up! Correct answer: ${shuffledQuestions[currentQuestion].answer}`;
-        answerInput.disabled = true;
-        currentQuestion++;
-        setTimeout(fetchGPTQuestion, 2000);
-      }
-    }, 1000);
-  }
-
-  function updateTimer() {
-    timerEl.textContent = `⏱️ Time left: ${timeLeft}s`;
   }
 
   function checkAnswer() {
-    clearInterval(timerInterval);
-    const userAnswer = answerInput.value.trim().toLowerCase();
-    const correctAnswer = shuffledQuestions[currentQuestion].answer.toLowerCase();
-
-    if (userAnswer === correctAnswer) {
-      resultEl.textContent = "✅ Correct!";
-      score++;
+    const userAnswer = document.getElementById('answer').value.trim().toLowerCase();
+    const result = document.getElementById('result');
+    if (userAnswer === currentAnswer) {
+      result.textContent = "✅ Correct!";
+      result.style.color = "green";
     } else {
-      resultEl.textContent = `❌ Incorrect. Correct answer: ${shuffledQuestions[currentQuestion].answer}`;
+      result.textContent = `❌ Incorrect. Correct answer: ${currentAnswer}`;
+      result.style.color = "red";
     }
-
-    answerInput.disabled = true;
-    scoreEl.textContent = `Score: ${score}`;
-    currentQuestion++;
-    setTimeout(fetchGPTQuestion, 2000);
   }
-
-  function skipQuestion() {
-    clearInterval(timerInterval);
-    resultEl.textContent = `⏭️ Skipped. Correct answer was: ${shuffledQuestions[currentQuestion].answer}`;
-    currentQuestion++;
-    setTimeout(fetchGPTQuestion, 2000);
-  }
-
-  function endQuiz() {
-    questionEl.textContent = "🎉 Quiz Completed!";
-    answerInput.style.display = "none";
-    document.querySelectorAll('button').forEach(btn => btn.style.display = "none");
-    playAgainBtn.style.display = "inline-block";
-    timerEl.style.display = "none";
-    scoreEl.textContent = `Final Score: ${score}`;
-
-    updateLeaderboard();
-  }
-
-  function updateLeaderboard() {
-    let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
-    leaderboard.push({ name: playerName, score: score });
-    leaderboard.sort((a, b) => b.score - a.score);
-    leaderboard = leaderboard.slice(0, 5);
-    localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
-    renderLeaderboard(leaderboard);
-  }
-
-  function renderLeaderboard(data) {
-    leaderboardList.innerHTML = '';
-    data.forEach(entry => {
-      const row = document.createElement('tr');
-      row.innerHTML = `<td>${entry.name}</td><td>${entry.score}</td>`;
-      leaderboardList.appendChild(row);
-    });
-  }
-
-  function restartGame() {
-    location.reload();
-  }
-
-  window.onload = () => {
-    const stored = JSON.parse(localStorage.getItem('leaderboard')) || [];
-    renderLeaderboard(stored);
-  };
 </script>
 
 </body>
