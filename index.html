@@ -160,11 +160,11 @@
     return shuffled;
   }
 
-  async function fetchGPTQuestion() {
-    try {
-      const res = await fetch('https://quiz-backend-8ug1.onrender.com', {
-        method: 'POST'
-      });
+  async function fetchQuestionFromBackend() {
+  const res = await fetch('https://quiz-backend-8ug1.onrender.com/question');
+  const data = await res.json();
+  return data;
+});
       const data = await res.json();
       const parsed = JSON.parse(data.text);
 
@@ -196,19 +196,21 @@
     fetchGPTQuestion();
   }
 
-  function loadQuestion() {
-    if (shuffledQuestions[currentQuestion]) {
-      questionEl.textContent = shuffledQuestions[currentQuestion].question;
-      answerInput.value = '';
-      answerInput.disabled = false;
-      resultEl.textContent = '';
-      timeLeft = 15;
-      updateTimer();
-      startTimer();
-    } else {
-      questionEl.textContent = "No question loaded.";
-    }
+  fasync function loadQuestion() {
+  const data = await fetchQuestionFromBackend();
+  if (!data || !data.question || !data.answer) {
+    questionEl.textContent = "⚠️ Failed to load question.";
+    return;
   }
+  questionEl.textContent = data.question;
+  answerInput.value = '';
+  currentAnswer = data.answer; // save correct answer for check
+  answerInput.disabled = false;
+  resultEl.textContent = '';
+  timeLeft = 15;
+  updateTimer();
+  startTimer();
+}
 
   function startTimer() {
     clearInterval(timerInterval);
