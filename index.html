@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FISU Quiz Game</title>
   <style>
     body {
@@ -106,10 +106,10 @@
 
   <div id="quizContent" style="display:none;">
     <div id="question">Loading question...</div>
-    <input type="text" id="answer" placeholder="Type your answer here">
-    <br>
-    <button onclick="checkAnswer()">Submit</button>
-    <button onclick="skipQuestion()">Next Question</button>
+    <input type="text" id="answer" placeholder="Type your answer here" autocomplete="off" />
+    <br />
+    <button id="submitBtn" onclick="checkAnswer()">Submit</button>
+    <button id="skipBtn" onclick="skipQuestion()">Next Question</button>
     <button id="playAgainBtn" onclick="restartGame()" style="display: none;">🔁 Play Again</button>
     <div id="timer"></div>
     <div id="result"></div>
@@ -120,10 +120,7 @@
       <h3>🏆 Leaderboard</h3>
       <table>
         <thead>
-        <tr>
-          <th>Name</th>
-          <th>Score</th>
-        </tr>
+          <tr><th>Name</th><th>Score</th></tr>
         </thead>
         <tbody id="leaderboardList"></tbody>
       </table>
@@ -132,9 +129,7 @@
 </div>
 
 <script>
-  let quizData = [];
-  let shuffledQuestions = [];
-  let currentQuestion = 0;
+  let currentQuestionData = null;
   let score = 0;
   let timeLeft = 15;
   let timerInterval;
@@ -144,57 +139,121 @@
   const answerInput = document.getElementById('answer');
   const resultEl = document.getElementById('result');
   const scoreEl = document.getElementById('score');
-  const highScoreEl = document.getElementById('high-score');
   const timerEl = document.getElementById('timer');
   const leaderboardList = document.getElementById('leaderboardList');
   const quizContent = document.getElementById('quizContent');
   const startBtn = document.getElementById('startBtn');
   const playAgainBtn = document.getElementById('playAgainBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  const skipBtn = document.getElementById('skipBtn');
 
-  function shuffleArray(array) {
-    let shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
+  function updateTimer() {
+    timerEl.textContent = `⏱️ Time left: ${timeLeft}s`;
+  }
+
+  function startTimer() {
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      updateTimer();
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        resultEl.textContent = `⏰ Time's up! Correct answer: ${currentQuestionData.answer}`;
+        answerInput.disabled = true;
+        submitBtn.disabled = true;
+        skipBtn.disabled = true;
+        setTimeout(() => {
+          fetchGPTQuestion();
+        }, 2500);
+      }
+    }, 1000);
   }
 
   async function fetchGPTQuestion() {
-  try {
-    const res = await fetch('https://quiz-backend-8ug1.onrender.com/generate-question', {
-      method: 'POST'
-    });
-    const data = await res.json();
-    const parsed = JSON.parse(data.text);
-
-    if (parsed.question && parsed.answer) {
-      // Instead of pushing and shuffling an array,
-      // directly use this question now
-      currentQuestionData = parsed;
-      loadQuestion(parsed);
-    } else {
-      questionEl.textContent = "❌ Failed to load question.";
-    }
-  } catch (error) {
-    console.error('Error fetching GPT question:', error);
-    questionEl.textContent = "⚠️ Error loading question.";
-  }
-}
-
-function loadQuestion(questionObj) {
-  if (questionObj) {
-    questionEl.textContent = questionObj.question;
-    answerInput.value = '';
-    answerInput.disabled = false;
     resultEl.textContent = '';
-    timeLeft = 15;
-    updateTimer();
-    startTimer();
-  } else {
-    questionEl.textContent = "No question loaded.";
+    questionEl.textContent = 'Loading question...';
+    answerInput.value = '';
+    answerInput.disabled = true;
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
+
+    try {
+      const res = await fetch('https://quiz-backend-8ug1.onrender.com/generate-question', {
+        method: 'POST'
+      });
+      const data = await res.json();
+
+      if (data.text) {
+        const parsed = JSON.parse(data.text);
+
+        if (parsed.question && parsed.answer) {
+          currentQuestionData = parsed;
+          loadQuestion(currentQuestionData);
+        } else {
+          questionEl.textContent = "❌ Failed to load question.";
+          currentQuestionData = null;
+        }
+      } else {
+        questionEl.textContent = "❌ Failed to load question data.";
+        currentQuestionData = null;
+      }
+    } catch (error) {
+      console.error('Error fetching GPT question:', error);
+      questionEl.textContent = "⚠️ Error loading question.";
+      currentQuestionData = null;
+    }
   }
-}
+
+  function loadQuestion(questionObj) {
+    if (questionObj && questionObj.question) {
+      questionEl.textContent = questionObj.question;
+      answerInput.value = '';
+      answerInput.disabled = false;
+      submitBtn.disabled = false;
+      skipBtn.disabled = false;
+      resultEl.textContent = '';
+      timeLeft = 15;
+      updateTimer();
+      startTimer();
+      answerInput.focus();
+    } else {
+      questionEl.textContent = "No question loaded.";
+    }
+  }
+
+  function checkAnswer() {
+    clearInterval(timerInterval);
+    const userAnswer = answerInput.value.trim().toLowerCase();
+    const correctAnswer = currentQuestionData.answer.toLowerCase();
+
+    if (userAnswer === correctAnswer) {
+      resultEl.textContent = "✅ Correct!";
+      score++;
+    } else {
+      resultEl.textContent = `❌ Incorrect. Correct answer: ${currentQuestionData.answer}`;
+    }
+
+    answerInput.disabled = true;
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
+    scoreEl.textContent = `Score: ${score}`;
+
+    setTimeout(() => {
+      fetchGPTQuestion();
+    }, 2500);
+  }
+
+  function skipQuestion() {
+    clearInterval(timerInterval);
+    resultEl.textContent = `⏭️ Skipped. Correct answer was: ${currentQuestionData.answer}`;
+    answerInput.disabled = true;
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
+
+    setTimeout(() => {
+      fetchGPTQuestion();
+    }, 2500);
+  }
 
   function startGame() {
     playerName = prompt("Enter your name:");
@@ -205,79 +264,13 @@ function loadQuestion(questionObj) {
     startBtn.style.display = 'none';
     quizContent.style.display = 'block';
     score = 0;
-    currentQuestion = 0;
     scoreEl.textContent = '';
     resultEl.textContent = '';
     fetchGPTQuestion();
   }
 
-  function loadQuestion() {
-    if (shuffledQuestions[currentQuestion]) {
-      questionEl.textContent = shuffledQuestions[currentQuestion].question;
-      answerInput.value = '';
-      answerInput.disabled = false;
-      resultEl.textContent = '';
-      timeLeft = 15;
-      updateTimer();
-      startTimer();
-    } else {
-      questionEl.textContent = "No question loaded.";
-    }
-  }
-
-  function startTimer() {
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-      timeLeft--;
-      updateTimer();
-      if (timeLeft <= 0) {
-        clearInterval(timerInterval);
-        resultEl.textContent = `⏰ Time's up! Correct answer: ${shuffledQuestions[currentQuestion].answer}`;
-        answerInput.disabled = true;
-        currentQuestion++;
-        setTimeout(fetchGPTQuestion, 2000);
-      }
-    }, 1000);
-  }
-
-  function updateTimer() {
-    timerEl.textContent = `⏱️ Time left: ${timeLeft}s`;
-  }
-
-  function checkAnswer() {
-    clearInterval(timerInterval);
-    const userAnswer = answerInput.value.trim().toLowerCase();
-    const correctAnswer = shuffledQuestions[currentQuestion].answer.toLowerCase();
-
-    if (userAnswer === correctAnswer) {
-      resultEl.textContent = "✅ Correct!";
-      score++;
-    } else {
-      resultEl.textContent = `❌ Incorrect. Correct answer: ${shuffledQuestions[currentQuestion].answer}`;
-    }
-
-    answerInput.disabled = true;
-    scoreEl.textContent = `Score: ${score}`;
-    currentQuestion++;
-    setTimeout(fetchGPTQuestion, 2000);
-  }
-
-  function skipQuestion() {
-    clearInterval(timerInterval);
-    resultEl.textContent = `⏭️ Skipped. Correct answer was: ${shuffledQuestions[currentQuestion].answer}`;
-    currentQuestion++;
-    setTimeout(fetchGPTQuestion, 2000);
-  }
-
-  function endQuiz() {
-    questionEl.textContent = "🎉 Quiz Completed!";
-    answerInput.style.display = "none";
-    document.querySelectorAll('button').forEach(btn => btn.style.display = "none");
-    playAgainBtn.style.display = "inline-block";
-    timerEl.style.display = "none";
-    scoreEl.textContent = `Final Score: ${score}`;
-
-    updateLeaderboard();
+  function restartGame() {
+    location.reload();
   }
 
   function updateLeaderboard() {
@@ -298,10 +291,7 @@ function loadQuestion(questionObj) {
     });
   }
 
-  function restartGame() {
-    location.reload();
-  }
-
+  // Optional: call updateLeaderboard when game ends or on page load if you want persistent leaderboard
   window.onload = () => {
     const stored = JSON.parse(localStorage.getItem('leaderboard')) || [];
     renderLeaderboard(stored);
