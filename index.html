@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FISU Quiz Game - Rhine Ruhr 2025 Edition</title>
+  <title>FISU Quiz Game (Rhine Ruhr 2025)</title>
   <style>
-    /* Your existing styles here (same as before) */
     body {
       font-family: 'Arial', sans-serif;
       background: linear-gradient(to right, #4facfe, #00f2fe);
@@ -97,7 +96,7 @@
     <input type="text" id="answer" placeholder="Type your answer here" autocomplete="off" />
     <br />
     <button onclick="checkAnswer()">Submit</button>
-    <button onclick="skipQuestion()">Skip</button>
+    <button onclick="skipQuestion()">Next Question</button>
     <button id="playAgainBtn" onclick="restartGame()" style="display: none;">🔁 Play Again</button>
     <div id="timer"></div>
     <div id="result"></div>
@@ -117,12 +116,13 @@
 </div>
 
 <script>
-  let questions = [];
-  let currentQuestionIndex = 0;
+  let quizData = [];
+  let currentQuestion = 0;
   let score = 0;
   let timeLeft = 15;
   let timerInterval;
   let playerName = '';
+  const totalQuestions = 20;
 
   const questionEl = document.getElementById('question');
   const answerInput = document.getElementById('answer');
@@ -135,63 +135,75 @@
   const startBtn = document.getElementById('startBtn');
   const playAgainBtn = document.getElementById('playAgainBtn');
 
-  async function fetchQuestions() {
+  async function fetchOneQuestion() {
     try {
-      const res = await fetch('https://quiz-backend-8ug1.onrender.com/generate-questions', {
+      const res = await fetch('https://quiz-backend-8ug1.onrender.com/generate-question', {
         method: 'POST'
       });
       const data = await res.json();
-
-      if (data.questions && data.questions.length === 20) {
-        questions = data.questions;
+      const parsed = JSON.parse(data.text);
+      if (parsed.question && parsed.answer) {
+        return parsed;
       } else {
-        alert('Failed to load 20 questions from backend.');
-        console.error('Invalid question data:', data);
+        console.error('Invalid question format', data);
+        return null;
       }
     } catch (error) {
-      alert('Error fetching questions.');
-      console.error('Fetch error:', error);
+      console.error('Error fetching question:', error);
+      return null;
+    }
+  }
+
+  async function fetchQuestions(num) {
+    quizData = [];
+    questionEl.textContent = 'Loading questions... Please wait.';
+    for (let i = 0; i < num; i++) {
+      const question = await fetchOneQuestion();
+      if (question) {
+        quizData.push(question);
+      } else {
+        // If fetch fails, add a fallback question or decrease total count
+        quizData.push({
+          question: 'Sample fallback question: What year is Rhine Ruhr 2025 held?',
+          answer: '2025'
+        });
+      }
     }
   }
 
   function startGame() {
-    playerName = prompt('Enter your name:');
+    playerName = prompt("Enter your name:");
     if (!playerName) {
-      alert('Name is required to play.');
+      alert("Name is required to play.");
       return;
     }
     startBtn.style.display = 'none';
     quizContent.style.display = 'block';
     score = 0;
-    currentQuestionIndex = 0;
-    scoreEl.textContent = `Score: ${score}`;
+    currentQuestion = 0;
+    scoreEl.textContent = '';
     resultEl.textContent = '';
+    highScoreEl.textContent = '';
     answerInput.style.display = 'inline-block';
     answerInput.disabled = false;
     playAgainBtn.style.display = 'none';
-
-    fetchQuestions().then(() => {
-      if (questions.length === 20) {
-        loadQuestion();
-      } else {
-        questionEl.textContent = 'Failed to load questions.';
-      }
+    fetchQuestions(totalQuestions).then(() => {
+      loadQuestion();
     });
   }
 
   function loadQuestion() {
-    if (currentQuestionIndex >= questions.length) {
+    if (currentQuestion < quizData.length) {
+      questionEl.textContent = quizData[currentQuestion].question;
+      answerInput.value = '';
+      answerInput.disabled = false;
+      resultEl.textContent = '';
+      timeLeft = 15;
+      updateTimer();
+      startTimer();
+    } else {
       endQuiz();
-      return;
     }
-    const current = questions[currentQuestionIndex];
-    questionEl.textContent = current.question;
-    answerInput.value = '';
-    answerInput.disabled = false;
-    resultEl.textContent = '';
-    timeLeft = 15;
-    updateTimer();
-    startTimer();
   }
 
   function startTimer() {
@@ -201,9 +213,9 @@
       updateTimer();
       if (timeLeft <= 0) {
         clearInterval(timerInterval);
-        resultEl.textContent = `⏰ Time's up! Correct answer: ${questions[currentQuestionIndex].answer}`;
+        resultEl.textContent = `⏰ Time's up! Correct answer: ${quizData[currentQuestion].answer}`;
         answerInput.disabled = true;
-        currentQuestionIndex++;
+        currentQuestion++;
         setTimeout(loadQuestion, 2000);
       }
     }, 1000);
@@ -216,4 +228,67 @@
   function checkAnswer() {
     clearInterval(timerInterval);
     const userAnswer = answerInput.value.trim().toLowerCase();
-   
+    const correctAnswer = quizData[currentQuestion].answer.toLowerCase();
+
+    if (userAnswer === correctAnswer) {
+      resultEl.textContent = "✅ Correct!";
+      score++;
+    } else {
+      resultEl.textContent = `❌ Incorrect. Correct answer: ${quizData[currentQuestion].answer}`;
+    }
+
+    answerInput.disabled = true;
+    scoreEl.textContent = `Score: ${score} / ${totalQuestions}`;
+    currentQuestion++;
+    setTimeout(loadQuestion, 2000);
+  }
+
+  function skipQuestion() {
+    clearInterval(timerInterval);
+    resultEl.textContent = `⏭️ Skipped. Correct answer was: ${quizData[currentQuestion].answer}`;
+    currentQuestion++;
+    setTimeout(loadQuestion, 2000);
+  }
+
+  function endQuiz() {
+    questionEl.textContent = "🎉 Quiz Completed!";
+    answerInput.style.display = "none";
+    document.querySelectorAll('button').forEach(btn => btn.style.display = "none");
+    playAgainBtn.style.display = "inline-block";
+    timerEl.style.display = "none";
+    scoreEl.textContent = `Final Score: ${score} / ${totalQuestions}`;
+    resultEl.textContent = '';
+
+    updateLeaderboard();
+  }
+
+  function updateLeaderboard() {
+    let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+    leaderboard.push({ name: playerName, score: score });
+    leaderboard.sort((a, b) => b.score - a.score);
+    leaderboard = leaderboard.slice(0, 5);
+    localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+    renderLeaderboard(leaderboard);
+  }
+
+  function renderLeaderboard(data) {
+    leaderboardList.innerHTML = '';
+    data.forEach(entry => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${entry.name}</td><td>${entry.score}</td>`;
+      leaderboardList.appendChild(row);
+    });
+  }
+
+  function restartGame() {
+    location.reload();
+  }
+
+  window.onload = () => {
+    const stored = JSON.parse(localStorage.getItem('leaderboard')) || [];
+    renderLeaderboard(stored);
+  };
+</script>
+
+</body>
+</html>
