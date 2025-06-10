@@ -161,32 +161,26 @@
   }
 
   async function fetchGPTQuestion() {
-  try {
-    const res = await fetch('https://quiz-backend-8ug1.onrender.com/generate-question', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        prompt: "Generate a quiz question related only to the FISU World University Games. Return the question and its correct answer as a JSON object with keys 'question' and 'answer'."
-      })
-    });
+    try {
+      const res = await fetch('https://quiz-backend-8ug1.onrender.com/generate-question', {
 
-    const data = await res.json();
-    const parsed = JSON.parse(data.text);
+        method: 'POST'
+      });
+      const data = await res.json();
+      const parsed = JSON.parse(data.text);
 
-    if (parsed.question && parsed.answer) {
-      quizData.push(parsed);
-      shuffledQuestions = shuffleArray(quizData);
-      loadQuestion();
-    } else {
-      questionEl.textContent = "❌ Failed to load a FISU question.";
+      if (parsed.question && parsed.answer) {
+        quizData.push(parsed);
+        shuffledQuestions = shuffleArray(quizData);
+        loadQuestion();
+      } else {
+        questionEl.textContent = "❌ Failed to load question.";
+      }
+    } catch (error) {
+      console.error('Error fetching GPT question:', error);
+      questionEl.textContent = "⚠️ Error loading question.";
     }
-  } catch (error) {
-    console.error('Error fetching GPT question:', error);
-    questionEl.textContent = "⚠️ Error loading question.";
   }
-}
 
   function startGame() {
     playerName = prompt("Enter your name:");
