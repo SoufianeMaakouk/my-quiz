@@ -161,26 +161,40 @@
   }
 
   async function fetchGPTQuestion() {
-    try {
-      const res = await fetch('https://quiz-backend-8ug1.onrender.com/generate-question', {
+  try {
+    const res = await fetch('https://quiz-backend-8ug1.onrender.com/generate-question', {
+      method: 'POST'
+    });
+    const data = await res.json();
+    const parsed = JSON.parse(data.text);
 
-        method: 'POST'
-      });
-      const data = await res.json();
-      const parsed = JSON.parse(data.text);
-
-      if (parsed.question && parsed.answer) {
-        quizData.push(parsed);
-        shuffledQuestions = shuffleArray(quizData);
-        loadQuestion();
-      } else {
-        questionEl.textContent = "❌ Failed to load question.";
-      }
-    } catch (error) {
-      console.error('Error fetching GPT question:', error);
-      questionEl.textContent = "⚠️ Error loading question.";
+    if (parsed.question && parsed.answer) {
+      // Instead of pushing and shuffling an array,
+      // directly use this question now
+      currentQuestionData = parsed;
+      loadQuestion(parsed);
+    } else {
+      questionEl.textContent = "❌ Failed to load question.";
     }
+  } catch (error) {
+    console.error('Error fetching GPT question:', error);
+    questionEl.textContent = "⚠️ Error loading question.";
   }
+}
+
+function loadQuestion(questionObj) {
+  if (questionObj) {
+    questionEl.textContent = questionObj.question;
+    answerInput.value = '';
+    answerInput.disabled = false;
+    resultEl.textContent = '';
+    timeLeft = 15;
+    updateTimer();
+    startTimer();
+  } else {
+    questionEl.textContent = "No question loaded.";
+  }
+}
 
   function startGame() {
     playerName = prompt("Enter your name:");
