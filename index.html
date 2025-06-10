@@ -154,22 +154,30 @@
     }
   }
 
-  async function fetchQuestions(num) {
-    quizData = [];
-    questionEl.textContent = 'Loading questions... Please wait.';
-    for (let i = 0; i < num; i++) {
-      const question = await fetchOneQuestion();
-      if (question) {
-        quizData.push(question);
-      } else {
-        // If fetch fails, add a fallback question or decrease total count
-        quizData.push({
-          question: 'Sample fallback question: What year is Rhine Ruhr 2025 held?',
-          answer: '2025'
-        });
-      }
+  async function fetchOneQuestion() {
+  try {
+    const res = await fetch('https://quiz-backend-8ug1.onrender.com/generate-question', {
+      method: 'POST'
+    });
+    if (!res.ok) {
+      // Log error details for debugging
+      const errData = await res.json();
+      console.error('Error response from backend:', errData);
+      return null;
     }
+    const data = await res.json();
+    // data should be { question: "...", answer: "..." }
+    if (data.question && data.answer) {
+      return data;
+    }
+    console.error('Invalid question format:', data);
+    return null;
+  } catch (error) {
+    console.error('Error fetching question:', error);
+    return null;
   }
+}
+
 
   function startGame() {
     playerName = prompt("Enter your name:");
