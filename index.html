@@ -13,104 +13,248 @@
       align-items: center;
       height: 100vh;
       margin: 0;
+      overflow: hidden;
     }
 
     #quiz-container {
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.2);
-      width: 90%;
-      max-width: 600px;
-    }
-
-    h2 { margin-bottom: 20px; }
-
-    input, button {
-      margin-top: 10px;
-      padding: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 40px;
       width: 100%;
+      max-width: 600px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      text-align: center;
     }
 
-    #result, #score, #final {
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      background-color: #4facfe;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+
+    button:hover {
+      background-color: #3a9de1;
+      transform: translateY(-3px);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    #timer {
+      font-size: 18px;
+      color: #e74c3c;
       margin-top: 15px;
-      font-weight: bold;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    #result, #score, #high-score {
+      font-size: 16px;
+      margin-top: 10px;
+    }
+
+    #leaderboard {
+      margin-top: 20px;
+      text-align: left;
+    }
+
+    #leaderboard table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    #leaderboard th, #leaderboard td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    #leaderboard th {
+      background-color: #f2f2f2;
     }
   </style>
 </head>
 <body>
-  <div id="quiz-container">
-    <h2>FISU Rhine-Ruhr 2025 Quiz</h2>
-    <div id="start-section">
-      <input id="nameInput" placeholder="Enter your name" />
-      <button onclick="startGame()">Start Quiz</button>
-    </div>
 
-    <div id="quiz-section" style="display: none;">
-      <div id="question">Loading...</div>
-      <input id="answer" placeholder="Your answer" />
-      <button onclick="checkAnswer()">Submit</button>
-      <button onclick="nextQuestion()">Next</button>
-      <div id="result"></div>
-      <div id="score"></div>
-      <div id="final"></div>
+<div id="quiz-container">
+  <h2>🏅 FISU Quiz Game (Local Edition)</h2>
+  <button id="startBtn" onclick="startGame()">Start Game</button>
+
+  <div id="quizContent" style="display:none;">
+    <div id="question">Loading question...</div>
+    <input type="text" id="answer" placeholder="Type your answer here">
+    <br>
+    <button onclick="checkAnswer()">Submit</button>
+    <button onclick="skipQuestion()">Skip</button>
+    <button id="playAgainBtn" onclick="restartGame()" style="display: none;">🔁 Play Again</button>
+    <div id="timer"></div>
+    <div id="result"></div>
+    <div id="score"></div>
+
+    <div id="leaderboard">
+      <h3>🏆 Leaderboard</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardList"></tbody>
+      </table>
     </div>
   </div>
+</div>
 
-  <script>
-    let questions = [];
-    let currentIndex = 0;
-    let score = 0;
-    let playerName = "";
+<script>
+  let quizData = [];
+  let currentQuestion = 0;
+  let score = 0;
+  let timeLeft = 15;
+  let timerInterval;
+  let playerName = '';
+  const totalQuestions = 20;
 
-    async function startGame() {
-      playerName = document.getElementById('nameInput').value.trim();
-      if (!playerName) {
-        alert("Please enter your name.");
-        return;
+  const questionEl = document.getElementById('question');
+  const answerInput = document.getElementById('answer');
+  const resultEl = document.getElementById('result');
+  const scoreEl = document.getElementById('score');
+  const timerEl = document.getElementById('timer');
+  const leaderboardList = document.getElementById('leaderboardList');
+  const quizContent = document.getElementById('quizContent');
+  const startBtn = document.getElementById('startBtn');
+  const playAgainBtn = document.getElementById('playAgainBtn');
+
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  async function loadQuestions() {
+    const res = await fetch('https://quiz-backend-8ug1.onrender.com/questions');
+    const data = await res.json();
+    quizData = shuffle(data).slice(0, totalQuestions);
+    loadQuestion();
+  }
+
+  function startGame() {
+    playerName = prompt("Enter your name:");
+    if (!playerName) return alert("Name is required.");
+    startBtn.style.display = 'none';
+    quizContent.style.display = 'block';
+    score = 0;
+    currentQuestion = 0;
+    scoreEl.textContent = '';
+    resultEl.textContent = '';
+    loadQuestions();
+  }
+
+  function loadQuestion() {
+    if (currentQuestion < quizData.length) {
+      questionEl.textContent = quizData[currentQuestion].question;
+      answerInput.value = '';
+      answerInput.disabled = false;
+      timeLeft = 15;
+      updateTimer();
+      startTimer();
+    } else {
+      endQuiz();
+    }
+  }
+
+  function startTimer() {
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      updateTimer();
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        resultEl.textContent = `⏰ Time's up! Answer: ${quizData[currentQuestion].answer}`;
+        answerInput.disabled = true;
+        currentQuestion++;
+        setTimeout(loadQuestion, 2000);
       }
+    }, 1000);
+  }
 
-      const res = await fetch('https://quiz-backend-8ug1.onrender.com/generate-questions');
-      const data = await res.json();
-      questions = data.questions;
-      currentIndex = 0;
-      score = 0;
-      document.getElementById('start-section').style.display = 'none';
-      document.getElementById('quiz-section').style.display = 'block';
-      loadQuestion();
+  function updateTimer() {
+    timerEl.textContent = `⏱️ Time left: ${timeLeft}s`;
+  }
+
+  function checkAnswer() {
+    clearInterval(timerInterval);
+    const userAnswer = answerInput.value.trim().toLowerCase();
+    const correctAnswer = quizData[currentQuestion].answer.toLowerCase();
+    if (userAnswer === correctAnswer) {
+      resultEl.textContent = "✅ Correct!";
+      score++;
+    } else {
+      resultEl.textContent = `❌ Wrong. Answer: ${quizData[currentQuestion].answer}`;
     }
+    scoreEl.textContent = `Score: ${score}`;
+    answerInput.disabled = true;
+    currentQuestion++;
+    setTimeout(loadQuestion, 2000);
+  }
 
-    function loadQuestion() {
-      if (currentIndex >= questions.length) {
-        document.getElementById('final').innerText = `Quiz Over! Final Score: ${score}/20`;
-        return;
-      }
+  function skipQuestion() {
+    clearInterval(timerInterval);
+    resultEl.textContent = `⏭️ Skipped. Answer: ${quizData[currentQuestion].answer}`;
+    currentQuestion++;
+    setTimeout(loadQuestion, 2000);
+  }
 
-      const q = questions[currentIndex];
-      document.getElementById('question').innerText = q.question;
-      document.getElementById('answer').value = '';
-      document.getElementById('result').innerText = '';
-    }
+  function endQuiz() {
+    questionEl.textContent = "🎉 Quiz Completed!";
+    answerInput.style.display = "none";
+    document.querySelectorAll('button').forEach(btn => btn.style.display = "none");
+    playAgainBtn.style.display = "inline-block";
+    timerEl.style.display = "none";
+    scoreEl.textContent = `Final Score: ${score}`;
+    updateLeaderboard();
+  }
 
-    function checkAnswer() {
-      const userAnswer = document.getElementById('answer').value.trim().toLowerCase();
-      const correct = questions[currentIndex].answer.toLowerCase();
-      const result = document.getElementById('result');
+  function updateLeaderboard() {
+    let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+    leaderboard.push({ name: playerName, score });
+    leaderboard.sort((a, b) => b.score - a.score);
+    leaderboard = leaderboard.slice(0, 5);
+    localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+    renderLeaderboard(leaderboard);
+  }
 
-      if (userAnswer === correct) {
-        result.innerText = "✅ Correct!";
-        score++;
-      } else {
-        result.innerText = `❌ Incorrect. Correct: ${questions[currentIndex].answer}`;
-      }
+  function renderLeaderboard(data) {
+    leaderboardList.innerHTML = '';
+    data.forEach(entry => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${entry.name}</td><td>${entry.score}</td>`;
+      leaderboardList.appendChild(row);
+    });
+  }
 
-      document.getElementById('score').innerText = `Score: ${score}`;
-    }
+  function restartGame() {
+    location.reload();
+  }
 
-    function nextQuestion() {
-      currentIndex++;
-      loadQuestion();
-    }
-  </script>
+  window.onload = () => {
+    renderLeaderboard(JSON.parse(localStorage.getItem('leaderboard')) || []);
+  };
+</script>
+
 </body>
 </html>
