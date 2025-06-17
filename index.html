@@ -89,7 +89,7 @@
 <body>
 
 <div id="quiz-container">
-  <h2>🏅 FISU Quiz Game (Local Edition)</h2>
+  <h2>🏅 FISU Quiz Game (Mongo Edition)</h2>
   <button id="startBtn" onclick="startGame()">Start Game</button>
 
   <div id="quizContent" style="display:none;">
@@ -126,6 +126,7 @@
   let timerInterval;
   let playerName = '';
   const totalQuestions = 20;
+  const backendURL = 'https://quiz-backend-8ug1.onrender.com';
 
   const questionEl = document.getElementById('question');
   const answerInput = document.getElementById('answer');
@@ -146,7 +147,7 @@
   }
 
   async function loadQuestions() {
-    const res = await fetch('https://quiz-backend-8ug1.onrender.com/questions');
+    const res = await fetch(`${backendURL}/questions`);
     const data = await res.json();
     quizData = shuffle(data).slice(0, totalQuestions);
     loadQuestion();
@@ -229,16 +230,22 @@
     updateLeaderboard();
   }
 
-  function updateLeaderboard() {
-    let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
-    leaderboard.push({ name: playerName, score });
-    leaderboard.sort((a, b) => b.score - a.score);
-    leaderboard = leaderboard.slice(0, 5);
-    localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
-    renderLeaderboard(leaderboard);
+  async function updateLeaderboard() {
+    try {
+      await fetch(`${backendURL}/leaderboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: playerName, score })
+      });
+      const res = await fetch(`${backendURL}/leaderboard`);
+      const data = await res.json();
+      renderLeaderboard(data);
+    } catch (err) {
+      console.error('❌ Failed to update leaderboard:', err);
+    }
   }
 
-  function renderLeaderboard(data) {
+  function renderLeaderboard(data = []) {
     leaderboardList.innerHTML = '';
     data.forEach(entry => {
       const row = document.createElement('tr');
@@ -247,12 +254,18 @@
     });
   }
 
-  function restartGame() {
+  async function restartGame() {
     location.reload();
   }
 
-  window.onload = () => {
-    renderLeaderboard(JSON.parse(localStorage.getItem('leaderboard')) || []);
+  window.onload = async () => {
+    try {
+      const res = await fetch(`${backendURL}/leaderboard`);
+      const data = await res.json();
+      renderLeaderboard(data);
+    } catch (err) {
+      console.error('❌ Failed to load leaderboard:', err);
+    }
   };
 </script>
 
