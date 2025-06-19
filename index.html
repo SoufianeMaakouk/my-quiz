@@ -139,6 +139,44 @@
   const startBtn = document.getElementById('startBtn');
   const playAgainBtn = document.getElementById('playAgainBtn');
 
+  const synonymMap = {
+    "usa": "united states",
+    "u.s.a.": "united states",
+    "united states of america": "united states",
+    "uk": "united kingdom",
+    "england": "united kingdom",
+    "olympics": "olympic games",
+    "fifa": "world cup",
+    "soccer": "football"
+  };
+
+  function normalize(text) {
+    let cleaned = text
+      .trim()
+      .toLowerCase()
+      .replace(/[^\w\s]/gi, '') // remove punctuation
+      .replace(/\s+/g, ' ');    // normalize whitespace
+    return synonymMap[cleaned] || cleaned;
+  }
+
+  function levenshtein(a, b) {
+    const dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+    for (let i = 0; i <= a.length; i++) dp[i][0] = i;
+    for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        dp[i][j] = Math.min(
+          dp[i - 1][j] + 1,
+          dp[i][j - 1] + 1,
+          dp[i - 1][j - 1] + cost
+        );
+      }
+    }
+    return dp[a.length][b.length];
+  }
+
   function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -200,14 +238,22 @@
 
   function checkAnswer() {
     clearInterval(timerInterval);
-    const userAnswer = answerInput.value.trim().toLowerCase();
-    const correctAnswer = quizData[currentQuestion].answer.toLowerCase();
+    const userAnswer = normalize(answerInput.value);
+    const correctAnswer = normalize(quizData[currentQuestion].answer);
+
+    const distance = levenshtein(userAnswer, correctAnswer);
+    const allowedDistance = Math.floor(correctAnswer.length * 0.25); // allow 25% fuzziness
+
     if (userAnswer === correctAnswer) {
       resultEl.textContent = "✅ Correct!";
+      score++;
+    } else if (distance <= allowedDistance) {
+      resultEl.textContent = "🤏 Close enough! Accepted.";
       score++;
     } else {
       resultEl.textContent = `❌ Wrong. Answer: ${quizData[currentQuestion].answer}`;
     }
+
     scoreEl.textContent = `Score: ${score}`;
     answerInput.disabled = true;
     currentQuestion++;
@@ -233,14 +279,12 @@
 
   async function updateLeaderboard() {
     try {
-      // ✅ Corrected: POST to /submit-score, not /leaderboard
       await fetch(`${backendURL}/submit-score`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: playerName, score })
       });
 
-      // ✅ Fetch leaderboard
       const res = await fetch(`${backendURL}/leaderboard`);
       const data = await res.json();
       renderLeaderboard(data);
@@ -272,6 +316,7 @@
     }
   };
 </script>
+
 
 </body>
 </html>
