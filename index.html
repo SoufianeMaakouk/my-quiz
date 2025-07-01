@@ -15,7 +15,6 @@
       margin: 0;
       padding: 10px;
     }
-
     #quiz-container {
       background: rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(10px);
@@ -27,7 +26,6 @@
       text-align: center;
       color: white;
     }
-
     button {
       padding: 12px 24px;
       border: none;
@@ -39,23 +37,14 @@
       margin: 10px 5px;
       transition: background-color 0.3s, transform 0.2s;
     }
-
     button:hover:not(:disabled) {
       background-color: #3a9de1;
       transform: translateY(-3px);
     }
-
-    button:active:not(:disabled) {
-      transform: translateY(1px);
-    }
-
     button:disabled {
       opacity: 0.5;
       cursor: default;
-      transform: none;
-      background-color: #7fbefc;
     }
-
     input[type="text"] {
       padding: 10px;
       width: 80%;
@@ -64,25 +53,21 @@
       margin-top: 10px;
       font-size: 16px;
     }
-
     #timer {
       font-size: 18px;
       color: #e74c3c;
       margin-top: 15px;
       animation: pulse 1s infinite;
     }
-
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.7; }
     }
-
     #result, #score {
       font-size: 16px;
       margin-top: 10px;
       min-height: 24px;
     }
-
     #leaderboard {
       margin-top: 20px;
       text-align: left;
@@ -91,24 +76,20 @@
       border-radius: 10px;
       padding: 10px;
     }
-
     #leaderboard h3 {
       margin-top: 0;
       text-align: center;
       color: #333;
     }
-
     #leaderboard table {
       width: 100%;
       border-collapse: collapse;
     }
-
     #leaderboard th, #leaderboard td {
       padding: 8px;
       text-align: left;
       border-bottom: 1px solid #ddd;
     }
-
     #leaderboard th {
       background-color: #f2f2f2;
     }
@@ -122,6 +103,7 @@
 
   <div id="quizContent" style="display:none;">
     <div id="question">Loading question...</div>
+    <div id="options"></div>
     <input type="text" id="answer" placeholder="Type your answer here" autocomplete="off" />
     <br>
     <button id="submitBtn" onclick="checkAnswer()">Submit</button>
@@ -135,10 +117,7 @@
       <h3>🏆 Leaderboard</h3>
       <table>
         <thead>
-          <tr>
-            <th>Name</th>
-            <th>Score</th>
-          </tr>
+          <tr><th>Name</th><th>Score</th></tr>
         </thead>
         <tbody id="leaderboardList"></tbody>
       </table>
@@ -147,238 +126,215 @@
 </div>
 
 <script>
-  const backendURL = 'https://quiz-backend-8ug1.onrender.com';
+const backendURL = 'https://quiz-backend-8ug1.onrender.com';
 
-  let quizData = [];
-  let currentQuestion = 0;
-  let score = 0;
-  let timeLeft = 20;
-  let timerInterval;
-  let playerName = '';
-  const totalQuestions = 20;
+let quizData = [];
+let currentQuestion = 0;
+let score = 0;
+let timeLeft = 20;
+let timerInterval;
+let playerName = '';
+const totalQuestions = 20;
 
-  const synonymMap = {
-    "usa": "united states",
-    "u.s.a.": "united states",
-    "united states of america": "united states",
-    "uk": "united kingdom",
-    "england": "united kingdom",
-    "olympics": "olympic games",
-    "fifa": "world cup",
-    "soccer": "football"
-  };
+const synonymMap = {
+  "usa": "united states",
+  "u.s.a.": "united states",
+  "united states of america": "united states",
+  "uk": "united kingdom",
+  "england": "united kingdom",
+  "olympics": "olympic games",
+  "fifa": "world cup",
+  "soccer": "football"
+};
 
-  const normalize = text =>
-    synonymMap[text.trim().toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ')] || 
-    text.trim().toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ');
+const normalize = text =>
+  synonymMap[text.trim().toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ')] ||
+  text.trim().toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ');
 
-  const levenshtein = (a, b) => {
-    const dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
-    for (let i = 0; i <= a.length; i++) dp[i][0] = i;
-    for (let j = 0; j <= b.length; j++) dp[0][j] = j;
-    for (let i = 1; i <= a.length; i++) {
-      for (let j = 1; j <= b.length; j++) {
-        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-        dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
-      }
-    }
-    return dp[a.length][b.length];
-  };
-
-  const shuffle = array => {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-  };
-
-  async function loadQuestions() {
-    try {
-      const res = await fetch(`${backendURL}/questions`);
-      if (!res.ok) throw new Error('Failed to load questions');
-      const data = await res.json();
-      quizData = shuffle(data).slice(0, totalQuestions);
-      loadQuestion();
-    } catch (e) {
-      alert("Failed to load questions. Please try again later.");
-      console.error(e);
+const levenshtein = (a, b) => {
+  const dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i++) dp[i][0] = i;
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
     }
   }
+  return dp[a.length][b.length];
+};
 
-  function startGame() {
-    playerName = prompt("Enter your name:");
-    if (!playerName) return alert("Name is required.");
-    document.getElementById('startBtn').style.display = 'none';
-    document.getElementById('quizContent').style.display = 'block';
-    score = 0;
-    currentQuestion = 0;
-    document.getElementById('score').textContent = '';
-    document.getElementById('result').textContent = '';
-    document.getElementById('answer').style.display = 'inline-block';
-    document.getElementById('submitBtn').style.display = 'inline-block';
-    document.getElementById('skipBtn').style.display = 'inline-block';
-    loadQuestions();
+const shuffle = array => {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
   }
+  return array;
+};
 
-  function loadQuestion() {
-  if (currentQuestion < quizData.length) {
-    const q = quizData[currentQuestion];
-    document.getElementById('question').textContent = q.question;
-
-    const optionsDiv = document.getElementById('options');
-    optionsDiv.innerHTML = '';
-
-    // If question has options, render buttons for each
-    if (q.options && q.options.length > 0) {
-      q.options.forEach(option => {
-        const btn = document.createElement('button');
-        btn.textContent = option;
-        btn.onclick = () => checkAnswer(option);
-        optionsDiv.appendChild(btn);
-      });
-    } else {
-      // fallback: if no options, show text input
-      optionsDiv.innerHTML = `<input type="text" id="answer" placeholder="Type your answer here"> 
-                              <button onclick="checkAnswer()">Submit</button>`;
-    }
-
-    timeLeft = 20;
-    updateTimer();
-    startTimer();
-  } else {
-    endQuiz();
+async function loadQuestions() {
+  try {
+    const res = await fetch(`${backendURL}/questions`);
+    if (!res.ok) throw new Error('Failed to load questions');
+    const data = await res.json();
+    quizData = shuffle(data).slice(0, totalQuestions);
+    loadQuestion();
+  } catch (e) {
+    alert("Failed to load questions. Please try again later.");
+    console.error(e);
   }
 }
 
+function startGame() {
+  playerName = prompt("Enter your name:");
+  if (!playerName) return alert("Name is required.");
+  document.getElementById('startBtn').style.display = 'none';
+  document.getElementById('quizContent').style.display = 'block';
+  score = 0;
+  currentQuestion = 0;
+  loadQuestions();
+}
 
-  function startTimer() {
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-      timeLeft--;
-      updateTimer();
-      if (timeLeft <= 0) {
-        clearInterval(timerInterval);
-        document.getElementById('result').textContent = `⏰ Time's up! Answer: ${quizData[currentQuestion].answer}`;
-        document.getElementById('answer').disabled = true;
-        document.getElementById('submitBtn').disabled = true;
-        document.getElementById('skipBtn').disabled = true;
-        currentQuestion++;
-        setTimeout(loadQuestion, 2000);
-      }
-    }, 1000);
-  }
+function loadQuestion() {
+  const q = quizData[currentQuestion];
+  document.getElementById('question').textContent = q.question;
+  document.getElementById('result').textContent = '';
+  document.getElementById('answer').value = '';
+  document.getElementById('answer').disabled = false;
+  document.getElementById('submitBtn').disabled = false;
+  document.getElementById('skipBtn').disabled = false;
 
-  function updateTimer() {
-    document.getElementById('timer').textContent = `⏱️ Time left: ${timeLeft}s`;
-  }
+  const optionsDiv = document.getElementById('options');
+  optionsDiv.innerHTML = '';
 
-  function checkAnswer(selectedOption = null) {
-  clearInterval(timerInterval);
-  
-  let userAnswer = '';
-  if (selectedOption !== null) {
-    userAnswer = normalize(selectedOption);
+  if (q.options && q.options.length > 0) {
+    document.getElementById('answer').style.display = 'none';
+    document.getElementById('submitBtn').style.display = 'none';
+    q.options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.textContent = opt;
+      btn.onclick = () => checkAnswer(opt);
+      optionsDiv.appendChild(btn);
+    });
   } else {
-    const input = document.getElementById('answer');
-    if (!input) return; // no answer input found
-    userAnswer = normalize(input.value);
+    document.getElementById('answer').style.display = 'inline-block';
+    document.getElementById('submitBtn').style.display = 'inline-block';
   }
-  
+
+  updateTimer();
+  startTimer();
+}
+
+function startTimer() {
+  timeLeft = 20;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateTimer();
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      document.getElementById('result').textContent = `⏰ Time's up! Answer: ${quizData[currentQuestion].answer}`;
+      disableInputs();
+      setTimeout(nextQuestion, 2000);
+    }
+  }, 1000);
+}
+
+function updateTimer() {
+  document.getElementById('timer').textContent = `⏱️ Time left: ${timeLeft}s`;
+}
+
+function checkAnswer(selectedOption = null) {
+  clearInterval(timerInterval);
+  let userAnswer = selectedOption ? normalize(selectedOption) : normalize(document.getElementById('answer').value);
   const correctAnswer = normalize(quizData[currentQuestion].answer);
   const distance = levenshtein(userAnswer, correctAnswer);
   const allowedDistance = Math.floor(correctAnswer.length * 0.25);
 
   if (userAnswer === correctAnswer || distance <= allowedDistance) {
-    document.getElementById('result').textContent = userAnswer === correctAnswer
-      ? "✅ Correct!" : "🤏 Close enough! Accepted.";
+    document.getElementById('result').textContent = userAnswer === correctAnswer ? "✅ Correct!" : "🤏 Close enough!";
     score++;
   } else {
     document.getElementById('result').textContent = `❌ Wrong. Answer: ${quizData[currentQuestion].answer}`;
   }
 
   document.getElementById('score').textContent = `Score: ${score}`;
-  // Disable option buttons or input after answering
-  document.getElementById('options').querySelectorAll('button').forEach(btn => btn.disabled = true);
-  const input = document.getElementById('answer');
-  if (input) input.disabled = true;
-
-  currentQuestion++;
-  setTimeout(loadQuestion, 2000);
+  disableInputs();
+  setTimeout(nextQuestion, 2000);
 }
 
-  function skipQuestion() {
-    clearInterval(timerInterval);
+function disableInputs() {
+  document.getElementById('answer').disabled = true;
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('skipBtn').disabled = true;
+  document.getElementById('options').querySelectorAll('button').forEach(btn => btn.disabled = true);
+}
 
-    const input = document.getElementById('answer');
-    const submitBtn = document.getElementById('submitBtn');
-    const skipBtn = document.getElementById('skipBtn');
+function skipQuestion() {
+  clearInterval(timerInterval);
+  document.getElementById('result').textContent = `⏭️ Skipped. Answer: ${quizData[currentQuestion].answer}`;
+  disableInputs();
+  setTimeout(nextQuestion, 2000);
+}
 
-    document.getElementById('result').textContent = `⏭️ Skipped. Answer: ${quizData[currentQuestion].answer}`;
-    input.disabled = true;
-    submitBtn.disabled = true;
-    skipBtn.disabled = true;
-
-    currentQuestion++;
-    setTimeout(loadQuestion, 2000);
+function nextQuestion() {
+  currentQuestion++;
+  if (currentQuestion < quizData.length) {
+    loadQuestion();
+  } else {
+    endQuiz();
   }
+}
 
-  function endQuiz() {
-    document.getElementById('question').textContent = "🎉 Quiz Completed!";
-    const input = document.getElementById('answer');
-    input.style.display = "none";
-    input.disabled = true;
+function endQuiz() {
+  document.getElementById('question').textContent = "🎉 Quiz Completed!";
+  document.getElementById('answer').style.display = "none";
+  document.getElementById('submitBtn').style.display = "none";
+  document.getElementById('skipBtn').style.display = "none";
+  document.getElementById('playAgainBtn').style.display = "inline-block";
+  document.getElementById('timer').style.display = "none";
+  document.getElementById('score').textContent = `Final Score: ${score}`;
+  updateLeaderboard();
+}
 
-    // Hide Submit and Skip buttons, show Play Again button
-    document.getElementById('submitBtn').style.display = "none";
-    document.getElementById('skipBtn').style.display = "none";
-    document.getElementById('playAgainBtn').style.display = "inline-block";
-
-    document.getElementById('timer').style.display = "none";
-    document.getElementById('score').textContent = `Final Score: ${score}`;
-    updateLeaderboard();
-  }
-
-  async function updateLeaderboard() {
-    try {
-      await fetch(`${backendURL}/submit-score`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: playerName, score })
-      });
-      const res = await fetch(`${backendURL}/leaderboard`);
-      if (!res.ok) throw new Error('Failed to fetch leaderboard');
-      const data = await res.json();
-      renderLeaderboard(data);
-    } catch (err) {
-      console.error('❌ Failed to update leaderboard:', err);
-    }
-  }
-
-  function renderLeaderboard(data = []) {
-    const tbody = document.getElementById('leaderboardList');
-    tbody.innerHTML = '';
-    data.forEach(entry => {
-      const row = document.createElement('tr');
-      row.innerHTML = `<td>${entry.name}</td><td>${entry.score}</td>`;
-      tbody.appendChild(row);
+async function updateLeaderboard() {
+  try {
+    await fetch(`${backendURL}/submit-score`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: playerName, score })
     });
+    const res = await fetch(`${backendURL}/leaderboard`);
+    const data = await res.json();
+    renderLeaderboard(data);
+  } catch (err) {
+    console.error('❌ Failed to update leaderboard:', err);
   }
+}
 
-  async function restartGame() {
-    location.reload();
+function renderLeaderboard(data = []) {
+  const tbody = document.getElementById('leaderboardList');
+  tbody.innerHTML = '';
+  data.forEach(entry => {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${entry.name}</td><td>${entry.score}</td>`;
+    tbody.appendChild(row);
+  });
+}
+
+function restartGame() {
+  location.reload();
+}
+
+window.onload = async () => {
+  try {
+    const res = await fetch(`${backendURL}/leaderboard`);
+    const data = await res.json();
+    renderLeaderboard(data);
+  } catch (err) {
+    console.error('❌ Failed to load leaderboard:', err);
   }
-
-  window.onload = async () => {
-    try {
-      const res = await fetch(`${backendURL}/leaderboard`);
-      if (!res.ok) throw new Error('Failed to load leaderboard');
-      const data = await res.json();
-      renderLeaderboard(data);
-    } catch (err) {
-      console.error('❌ Failed to load leaderboard:', err);
-    }
-  };
+};
 </script>
 
 </body>
