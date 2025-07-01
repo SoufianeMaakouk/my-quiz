@@ -1,4 +1,3 @@
-<!-- Full HTML -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,14 +13,14 @@
       align-items: center;
       height: 100vh;
       margin: 0;
-      overflow: hidden;
+      padding: 10px;
     }
 
     #quiz-container {
       background: rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(10px);
       border-radius: 15px;
-      padding: 40px;
+      padding: 30px;
       width: 100%;
       max-width: 600px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -36,7 +35,7 @@
       color: white;
       font-size: 16px;
       cursor: pointer;
-      margin: 10px;
+      margin: 10px 5px;
       transition: background-color 0.3s, transform 0.2s;
     }
 
@@ -47,6 +46,15 @@
 
     button:active {
       transform: translateY(1px);
+    }
+
+    input[type="text"] {
+      padding: 10px;
+      width: 80%;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-top: 10px;
+      font-size: 16px;
     }
 
     #timer {
@@ -61,7 +69,7 @@
       50% { opacity: 0.7; }
     }
 
-    #result, #score, #high-score {
+    #result, #score {
       font-size: 16px;
       margin-top: 10px;
     }
@@ -120,6 +128,8 @@
 </div>
 
 <script>
+  const backendURL = 'https://quiz-backend-8ug1.onrender.com';
+
   let quizData = [];
   let currentQuestion = 0;
   let score = 0;
@@ -127,17 +137,6 @@
   let timerInterval;
   let playerName = '';
   const totalQuestions = 20;
-  const backendURL = 'https://quiz-backend-8ug1.onrender.com';
-
-  const questionEl = document.getElementById('question');
-  const answerInput = document.getElementById('answer');
-  const resultEl = document.getElementById('result');
-  const scoreEl = document.getElementById('score');
-  const timerEl = document.getElementById('timer');
-  const leaderboardList = document.getElementById('leaderboardList');
-  const quizContent = document.getElementById('quizContent');
-  const startBtn = document.getElementById('startBtn');
-  const playAgainBtn = document.getElementById('playAgainBtn');
 
   const synonymMap = {
     "usa": "united states",
@@ -150,40 +149,30 @@
     "soccer": "football"
   };
 
-  function normalize(text) {
-    let cleaned = text
-      .trim()
-      .toLowerCase()
-      .replace(/[^\w\s]/gi, '') // remove punctuation
-      .replace(/\s+/g, ' ');    // normalize whitespace
-    return synonymMap[cleaned] || cleaned;
-  }
+  const normalize = text =>
+    synonymMap[text.trim().toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ')] || 
+    text.trim().toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, ' ');
 
-  function levenshtein(a, b) {
+  const levenshtein = (a, b) => {
     const dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
     for (let i = 0; i <= a.length; i++) dp[i][0] = i;
     for (let j = 0; j <= b.length; j++) dp[0][j] = j;
-
     for (let i = 1; i <= a.length; i++) {
       for (let j = 1; j <= b.length; j++) {
         const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-        dp[i][j] = Math.min(
-          dp[i - 1][j] + 1,
-          dp[i][j - 1] + 1,
-          dp[i - 1][j - 1] + cost
-        );
+        dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
       }
     }
     return dp[a.length][b.length];
-  }
+  };
 
-  function shuffle(array) {
+  const shuffle = array => {
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
-  }
+  };
 
   async function loadQuestions() {
     const res = await fetch(`${backendURL}/questions`);
@@ -195,20 +184,22 @@
   function startGame() {
     playerName = prompt("Enter your name:");
     if (!playerName) return alert("Name is required.");
-    startBtn.style.display = 'none';
-    quizContent.style.display = 'block';
+    document.getElementById('startBtn').style.display = 'none';
+    document.getElementById('quizContent').style.display = 'block';
     score = 0;
     currentQuestion = 0;
-    scoreEl.textContent = '';
-    resultEl.textContent = '';
+    document.getElementById('score').textContent = '';
+    document.getElementById('result').textContent = '';
     loadQuestions();
   }
 
   function loadQuestion() {
     if (currentQuestion < quizData.length) {
-      questionEl.textContent = quizData[currentQuestion].question;
-      answerInput.value = '';
-      answerInput.disabled = false;
+      document.getElementById('question').textContent = quizData[currentQuestion].question;
+      const input = document.getElementById('answer');
+      input.value = '';
+      input.disabled = false;
+      input.focus();
       timeLeft = 20;
       updateTimer();
       startTimer();
@@ -224,8 +215,8 @@
       updateTimer();
       if (timeLeft <= 0) {
         clearInterval(timerInterval);
-        resultEl.textContent = `⏰ Time's up! Answer: ${quizData[currentQuestion].answer}`;
-        answerInput.disabled = true;
+        document.getElementById('result').textContent = `⏰ Time's up! Answer: ${quizData[currentQuestion].answer}`;
+        document.getElementById('answer').disabled = true;
         currentQuestion++;
         setTimeout(loadQuestion, 2000);
       }
@@ -233,47 +224,44 @@
   }
 
   function updateTimer() {
-    timerEl.textContent = `⏱️ Time left: ${timeLeft}s`;
+    document.getElementById('timer').textContent = `⏱️ Time left: ${timeLeft}s`;
   }
 
   function checkAnswer() {
     clearInterval(timerInterval);
-    const userAnswer = normalize(answerInput.value);
+    const userAnswer = normalize(document.getElementById('answer').value);
     const correctAnswer = normalize(quizData[currentQuestion].answer);
-
     const distance = levenshtein(userAnswer, correctAnswer);
-    const allowedDistance = Math.floor(correctAnswer.length * 0.25); // allow 25% fuzziness
+    const allowedDistance = Math.floor(correctAnswer.length * 0.25);
 
-    if (userAnswer === correctAnswer) {
-      resultEl.textContent = "✅ Correct!";
-      score++;
-    } else if (distance <= allowedDistance) {
-      resultEl.textContent = "🤏 Close enough! Accepted.";
+    if (userAnswer === correctAnswer || distance <= allowedDistance) {
+      document.getElementById('result').textContent = userAnswer === correctAnswer
+        ? "✅ Correct!" : "🤏 Close enough! Accepted.";
       score++;
     } else {
-      resultEl.textContent = `❌ Wrong. Answer: ${quizData[currentQuestion].answer}`;
+      document.getElementById('result').textContent = `❌ Wrong. Answer: ${quizData[currentQuestion].answer}`;
     }
 
-    scoreEl.textContent = `Score: ${score}`;
-    answerInput.disabled = true;
+    document.getElementById('score').textContent = `Score: ${score}`;
+    document.getElementById('answer').disabled = true;
     currentQuestion++;
     setTimeout(loadQuestion, 2000);
   }
 
   function skipQuestion() {
     clearInterval(timerInterval);
-    resultEl.textContent = `⏭️ Skipped. Answer: ${quizData[currentQuestion].answer}`;
+    document.getElementById('result').textContent = `⏭️ Skipped. Answer: ${quizData[currentQuestion].answer}`;
     currentQuestion++;
     setTimeout(loadQuestion, 2000);
   }
 
   function endQuiz() {
-    questionEl.textContent = "🎉 Quiz Completed!";
-    answerInput.style.display = "none";
+    document.getElementById('question').textContent = "🎉 Quiz Completed!";
+    document.getElementById('answer').style.display = "none";
     document.querySelectorAll('button').forEach(btn => btn.style.display = "none");
-    playAgainBtn.style.display = "inline-block";
-    timerEl.style.display = "none";
-    scoreEl.textContent = `Final Score: ${score}`;
+    document.getElementById('playAgainBtn').style.display = "inline-block";
+    document.getElementById('timer').style.display = "none";
+    document.getElementById('score').textContent = `Final Score: ${score}`;
     updateLeaderboard();
   }
 
@@ -284,7 +272,6 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: playerName, score })
       });
-
       const res = await fetch(`${backendURL}/leaderboard`);
       const data = await res.json();
       renderLeaderboard(data);
@@ -294,11 +281,12 @@
   }
 
   function renderLeaderboard(data = []) {
-    leaderboardList.innerHTML = '';
+    const tbody = document.getElementById('leaderboardList');
+    tbody.innerHTML = '';
     data.forEach(entry => {
       const row = document.createElement('tr');
       row.innerHTML = `<td>${entry.name}</td><td>${entry.score}</td>`;
-      leaderboardList.appendChild(row);
+      tbody.appendChild(row);
     });
   }
 
@@ -316,7 +304,6 @@
     }
   };
 </script>
-
 
 </body>
 </html>
