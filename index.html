@@ -263,34 +263,39 @@
     document.getElementById('timer').textContent = `⏱️ Time left: ${timeLeft}s`;
   }
 
-  function checkAnswer() {
-    clearInterval(timerInterval);
-
+  function checkAnswer(selectedOption = null) {
+  clearInterval(timerInterval);
+  
+  let userAnswer = '';
+  if (selectedOption !== null) {
+    userAnswer = normalize(selectedOption);
+  } else {
     const input = document.getElementById('answer');
-    const submitBtn = document.getElementById('submitBtn');
-    const skipBtn = document.getElementById('skipBtn');
-
-    const userAnswer = normalize(input.value);
-    const correctAnswer = normalize(quizData[currentQuestion].answer);
-    const distance = levenshtein(userAnswer, correctAnswer);
-    const allowedDistance = Math.floor(correctAnswer.length * 0.25);
-
-    if (userAnswer === correctAnswer || distance <= allowedDistance) {
-      document.getElementById('result').textContent = userAnswer === correctAnswer
-        ? "✅ Correct!" : "🤏 Close enough! Accepted.";
-      score++;
-    } else {
-      document.getElementById('result').textContent = `❌ Wrong. Answer: ${quizData[currentQuestion].answer}`;
-    }
-
-    document.getElementById('score').textContent = `Score: ${score}`;
-    input.disabled = true;
-    submitBtn.disabled = true;
-    skipBtn.disabled = true;
-
-    currentQuestion++;
-    setTimeout(loadQuestion, 2000);
+    if (!input) return; // no answer input found
+    userAnswer = normalize(input.value);
   }
+  
+  const correctAnswer = normalize(quizData[currentQuestion].answer);
+  const distance = levenshtein(userAnswer, correctAnswer);
+  const allowedDistance = Math.floor(correctAnswer.length * 0.25);
+
+  if (userAnswer === correctAnswer || distance <= allowedDistance) {
+    document.getElementById('result').textContent = userAnswer === correctAnswer
+      ? "✅ Correct!" : "🤏 Close enough! Accepted.";
+    score++;
+  } else {
+    document.getElementById('result').textContent = `❌ Wrong. Answer: ${quizData[currentQuestion].answer}`;
+  }
+
+  document.getElementById('score').textContent = `Score: ${score}`;
+  // Disable option buttons or input after answering
+  document.getElementById('options').querySelectorAll('button').forEach(btn => btn.disabled = true);
+  const input = document.getElementById('answer');
+  if (input) input.disabled = true;
+
+  currentQuestion++;
+  setTimeout(loadQuestion, 2000);
+}
 
   function skipQuestion() {
     clearInterval(timerInterval);
