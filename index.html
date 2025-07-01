@@ -25,6 +25,7 @@
       max-width: 600px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
       text-align: center;
+      color: white;
     }
 
     button {
@@ -39,13 +40,20 @@
       transition: background-color 0.3s, transform 0.2s;
     }
 
-    button:hover {
+    button:hover:not(:disabled) {
       background-color: #3a9de1;
       transform: translateY(-3px);
     }
 
-    button:active {
+    button:active:not(:disabled) {
       transform: translateY(1px);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+      transform: none;
+      background-color: #7fbefc;
     }
 
     input[type="text"] {
@@ -72,11 +80,22 @@
     #result, #score {
       font-size: 16px;
       margin-top: 10px;
+      min-height: 24px;
     }
 
     #leaderboard {
       margin-top: 20px;
       text-align: left;
+      color: black;
+      background: white;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    #leaderboard h3 {
+      margin-top: 0;
+      text-align: center;
+      color: #333;
     }
 
     #leaderboard table {
@@ -103,10 +122,10 @@
 
   <div id="quizContent" style="display:none;">
     <div id="question">Loading question...</div>
-    <input type="text" id="answer" placeholder="Type your answer here">
+    <input type="text" id="answer" placeholder="Type your answer here" autocomplete="off" />
     <br>
-    <button onclick="checkAnswer()">Submit</button>
-    <button onclick="skipQuestion()">Skip</button>
+    <button id="submitBtn" onclick="checkAnswer()">Submit</button>
+    <button id="skipBtn" onclick="skipQuestion()">Skip</button>
     <button id="playAgainBtn" onclick="restartGame()" style="display: none;">🔁 Play Again</button>
     <div id="timer"></div>
     <div id="result"></div>
@@ -175,10 +194,16 @@
   };
 
   async function loadQuestions() {
-    const res = await fetch(`${backendURL}/questions`);
-    const data = await res.json();
-    quizData = shuffle(data).slice(0, totalQuestions);
-    loadQuestion();
+    try {
+      const res = await fetch(`${backendURL}/questions`);
+      if (!res.ok) throw new Error('Failed to load questions');
+      const data = await res.json();
+      quizData = shuffle(data).slice(0, totalQuestions);
+      loadQuestion();
+    } catch (e) {
+      alert("Failed to load questions. Please try again later.");
+      console.error(e);
+    }
   }
 
   function startGame() {
@@ -190,6 +215,9 @@
     currentQuestion = 0;
     document.getElementById('score').textContent = '';
     document.getElementById('result').textContent = '';
+    document.getElementById('answer').style.display = 'inline-block';
+    document.getElementById('submitBtn').style.display = 'inline-block';
+    document.getElementById('skipBtn').style.display = 'inline-block';
     loadQuestions();
   }
 
@@ -199,10 +227,16 @@
       const input = document.getElementById('answer');
       input.value = '';
       input.disabled = false;
+      input.style.display = 'inline-block';
       input.focus();
+
+      document.getElementById('submitBtn').disabled = false;
+      document.getElementById('skipBtn').disabled = false;
+
       timeLeft = 20;
       updateTimer();
       startTimer();
+      document.getElementById('result').textContent = '';
     } else {
       endQuiz();
     }
@@ -217,6 +251,8 @@
         clearInterval(timerInterval);
         document.getElementById('result').textContent = `⏰ Time's up! Answer: ${quizData[currentQuestion].answer}`;
         document.getElementById('answer').disabled = true;
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('skipBtn').disabled = true;
         currentQuestion++;
         setTimeout(loadQuestion, 2000);
       }
@@ -229,7 +265,12 @@
 
   function checkAnswer() {
     clearInterval(timerInterval);
-    const userAnswer = normalize(document.getElementById('answer').value);
+
+    const input = document.getElementById('answer');
+    const submitBtn = document.getElementById('submitBtn');
+    const skipBtn = document.getElementById('skipBtn');
+
+    const userAnswer = normalize(input.value);
     const correctAnswer = normalize(quizData[currentQuestion].answer);
     const distance = levenshtein(userAnswer, correctAnswer);
     const allowedDistance = Math.floor(correctAnswer.length * 0.25);
@@ -243,23 +284,41 @@
     }
 
     document.getElementById('score').textContent = `Score: ${score}`;
-    document.getElementById('answer').disabled = true;
+    input.disabled = true;
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
+
     currentQuestion++;
     setTimeout(loadQuestion, 2000);
   }
 
   function skipQuestion() {
     clearInterval(timerInterval);
+
+    const input = document.getElementById('answer');
+    const submitBtn = document.getElementById('submitBtn');
+    const skipBtn = document.getElementById('skipBtn');
+
     document.getElementById('result').textContent = `⏭️ Skipped. Answer: ${quizData[currentQuestion].answer}`;
+    input.disabled = true;
+    submitBtn.disabled = true;
+    skipBtn.disabled = true;
+
     currentQuestion++;
     setTimeout(loadQuestion, 2000);
   }
 
   function endQuiz() {
     document.getElementById('question').textContent = "🎉 Quiz Completed!";
-    document.getElementById('answer').style.display = "none";
-    document.querySelectorAll('button').forEach(btn => btn.style.display = "none");
+    const input = document.getElementById('answer');
+    input.style.display = "none";
+    input.disabled = true;
+
+    // Hide Submit and Skip buttons, show Play Again button
+    document.getElementById('submitBtn').style.display = "none";
+    document.getElementById('skipBtn').style.display = "none";
     document.getElementById('playAgainBtn').style.display = "inline-block";
+
     document.getElementById('timer').style.display = "none";
     document.getElementById('score').textContent = `Final Score: ${score}`;
     updateLeaderboard();
@@ -273,6 +332,7 @@
         body: JSON.stringify({ name: playerName, score })
       });
       const res = await fetch(`${backendURL}/leaderboard`);
+      if (!res.ok) throw new Error('Failed to fetch leaderboard');
       const data = await res.json();
       renderLeaderboard(data);
     } catch (err) {
@@ -297,6 +357,7 @@
   window.onload = async () => {
     try {
       const res = await fetch(`${backendURL}/leaderboard`);
+      if (!res.ok) throw new Error('Failed to load leaderboard');
       const data = await res.json();
       renderLeaderboard(data);
     } catch (err) {
