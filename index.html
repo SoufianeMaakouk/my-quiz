@@ -222,25 +222,35 @@
   }
 
   function loadQuestion() {
-    if (currentQuestion < quizData.length) {
-      document.getElementById('question').textContent = quizData[currentQuestion].question;
-      const input = document.getElementById('answer');
-      input.value = '';
-      input.disabled = false;
-      input.style.display = 'inline-block';
-      input.focus();
+  if (currentQuestion < quizData.length) {
+    const q = quizData[currentQuestion];
+    document.getElementById('question').textContent = q.question;
 
-      document.getElementById('submitBtn').disabled = false;
-      document.getElementById('skipBtn').disabled = false;
+    const optionsDiv = document.getElementById('options');
+    optionsDiv.innerHTML = '';
 
-      timeLeft = 20;
-      updateTimer();
-      startTimer();
-      document.getElementById('result').textContent = '';
+    // If question has options, render buttons for each
+    if (q.options && q.options.length > 0) {
+      q.options.forEach(option => {
+        const btn = document.createElement('button');
+        btn.textContent = option;
+        btn.onclick = () => checkAnswer(option);
+        optionsDiv.appendChild(btn);
+      });
     } else {
-      endQuiz();
+      // fallback: if no options, show text input
+      optionsDiv.innerHTML = `<input type="text" id="answer" placeholder="Type your answer here"> 
+                              <button onclick="checkAnswer()">Submit</button>`;
     }
+
+    timeLeft = 20;
+    updateTimer();
+    startTimer();
+  } else {
+    endQuiz();
   }
+}
+
 
   function startTimer() {
     clearInterval(timerInterval);
