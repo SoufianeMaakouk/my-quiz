@@ -1,24 +1,63 @@
-<div id="quizContent" style="display:none;">
-  <div id="questionImageContainer">
-    <img id="questionImage" src="" alt="Question Image" style="display:none; width: 100%; border-radius: 10px; margin-bottom: 20px;" />
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Quiz App</title>
+  <style>
+    .answer-btn {
+      display: block;
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 1.2em;
+      width: 100%;
+    }
+    .answers-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="quizContent">
+    <div id="questionImageContainer">
+      <img id="questionImage" src="" alt="Question Image" style="display:none; width: 100%; border-radius: 10px; margin-bottom: 20px;" />
+    </div>
+    <div id="question">Loading question...</div>
+    <div id="options" class="answers-grid"></div>
+    <div id="result"></div>
   </div>
-  <div id="question">Loading question...</div>
-  <div id="options" class="answers-grid"></div>
-  <button id="playAgainBtn" onclick="restartGame()" style="display: none;">🔁 Play Again</button>
-  <div id="timer"></div>
-  <div id="result"></div>
-  <div id="score"></div>
 
-  <div id="leaderboard">
-    <h3>🏆 Leaderboard</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Score</th>
-        </tr>
-      </thead>
-      <tbody id="leaderboardList"></tbody>
-    </table>
-  </div>
-</div>
+  <script>
+    const quizData = [
+      {
+        question: "Where is Rhine‑Ruhr 2025 held?",
+        options: ["Germany", "France", "Italy", "Spain"],
+        answer: "Germany",
+        image: "https://example.com/images/rahimi.jpg"
+      }
+    ];
+
+    function loadQuiz() {
+      const q = quizData[0];
+      const imageEl = document.getElementById("questionImage");
+      imageEl.src = q.image;
+      imageEl.style.display = "block";
+      document.getElementById("question").textContent = q.question;
+      const optionsEl = document.getElementById("options");
+      optionsEl.innerHTML = "";
+      q.options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.textContent = opt;
+        btn.className = "answer-btn";
+        btn.onclick = () => alert(opt === q.answer ? "✅ Correct!" : "❌ Wrong!");
+        optionsEl.appendChild(btn);
+      });
+    }
+
+    window.onload = () => {
+      document.getElementById("quizContent").style.display = "block";
+      loadQuiz();
+    };
+  </script>
+</body>
+</html>
