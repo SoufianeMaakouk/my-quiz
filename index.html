@@ -108,16 +108,21 @@
     let questions = [];
     let usedIndices = [];
 
-    async function loadQuestions() {
-      try {
-        const res = await fetch('questions.json');
-        questions = await res.json();
-        loadQuestion();
-      } catch (err) {
-        console.error('Failed to load questions.json:', err);
-        document.getElementById('question').textContent = 'Error loading questions.';
-      }
+   async function fetchQuestion() {
+  try {
+    if (questions.length === 0) {
+      const response = await fetch('./questions.json');
+      const data = await response.json();
+      questions = [...data];
+      shuffleArray(questions);
     }
+    return questions[currentQuestion];
+  } catch (error) {
+    console.error('Error loading questions:', error);
+    document.getElementById('question').textContent = 'Error loading questions.';
+    return null;
+  }
+}
 
     function getRandomQuestion() {
       if (usedIndices.length >= 10 || usedIndices.length >= questions.length) return null;
