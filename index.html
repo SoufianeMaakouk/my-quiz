@@ -123,7 +123,7 @@
         q.options.forEach(option => {
           const btn = document.createElement('button');
           btn.textContent = option;
-          btn.onclick = () => checkAnswer(option, q.answer);
+          btn.onclick = () => checkAnswer(option, q.correctAnswer); // ✅ FIXED THIS LINE
           optionsDiv.appendChild(btn);
         });
 
