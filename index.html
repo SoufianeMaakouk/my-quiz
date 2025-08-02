@@ -89,7 +89,7 @@
 </head>
 <body>
   <header>
-    <h1>FISU Quiz Game (Local Edition)</h1>
+    <h1>FISU Quiz Game (Backend Edition)</h1>
   </header>
   <div id="quizContainer">
     <div id="quizContent">
@@ -105,47 +105,33 @@
   <script>
     let currentIndex = 0;
     let score = 0;
-    let questions = [];
-    let usedIndices = [];
+    const maxQuestions = 10;
 
-    async function loadQuestions() {
+    async function loadQuestion() {
+      if (currentIndex >= maxQuestions) return showFinalScore();
       try {
-        const res = await fetch('questions.json');
-        questions = await res.json();
-        loadQuestion();
+        const res = await fetch('https://quiz-backend-8ug1.onrender.com/generate-question');
+        const q = await res.json();
+
+        document.getElementById('question').textContent = `Q${currentIndex + 1}: ${q.question}`;
+        document.getElementById('result').textContent = '';
+        const imgContainer = document.getElementById('question-image');
+        imgContainer.innerHTML = q.image ? `<img src="${q.image}" alt="Question Image">` : '';
+
+        const optionsDiv = document.getElementById('options');
+        optionsDiv.innerHTML = '';
+        q.options.forEach(option => {
+          const btn = document.createElement('button');
+          btn.textContent = option;
+          btn.onclick = () => checkAnswer(option, q.answer);
+          optionsDiv.appendChild(btn);
+        });
+
+        currentIndex++;
       } catch (err) {
-        console.error('Failed to load questions.json:', err);
-        document.getElementById('question').textContent = 'Error loading questions.';
+        console.error('Failed to load question from backend:', err);
+        document.getElementById('question').textContent = 'Error loading question from server.';
       }
-    }
-
-    function getRandomQuestion() {
-      if (usedIndices.length >= 10 || usedIndices.length >= questions.length) return null;
-      let index;
-      do {
-        index = Math.floor(Math.random() * questions.length);
-      } while (usedIndices.includes(index));
-      usedIndices.push(index);
-      return questions[index];
-    }
-
-    function loadQuestion() {
-      const q = getRandomQuestion();
-      if (!q) return showFinalScore();
-
-      document.getElementById('question').textContent = `Q${usedIndices.length}: ${q.question}`;
-      document.getElementById('result').textContent = '';
-      const imgContainer = document.getElementById('question-image');
-      imgContainer.innerHTML = q.image ? `<img src="${q.image}" alt="Question Image">` : '';
-
-      const optionsDiv = document.getElementById('options');
-      optionsDiv.innerHTML = '';
-      q.options.forEach(option => {
-        const btn = document.createElement('button');
-        btn.textContent = option;
-        btn.onclick = () => checkAnswer(option, q.answer);
-        optionsDiv.appendChild(btn);
-      });
     }
 
     function checkAnswer(selected, correct) {
@@ -161,21 +147,20 @@
 
     function showFinalScore() {
       document.getElementById('quizContent').style.display = 'none';
-      document.getElementById('score').textContent = `🎉 You scored ${score} out of ${usedIndices.length}!`;
+      document.getElementById('score').textContent = `🎉 You scored ${score} out of ${currentIndex}!`;
       document.getElementById('restartButton').style.display = 'inline-block';
     }
 
     function restartQuiz() {
       score = 0;
       currentIndex = 0;
-      usedIndices = [];
       document.getElementById('quizContent').style.display = 'block';
       document.getElementById('score').textContent = '';
       document.getElementById('restartButton').style.display = 'none';
       loadQuestion();
     }
 
-    loadQuestions();
+    loadQuestion();
   </script>
 </body>
 </html>
