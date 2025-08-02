@@ -33,9 +33,6 @@
       font-size: 1.5em;
       margin-bottom: 20px;
     }
-    #question-image {
-      margin: 20px 0;
-    }
     #question-image img {
       max-width: 100%;
       max-height: 300px;
@@ -63,6 +60,12 @@
     #options button:hover {
       background-color: #45a049;
     }
+    #options button.correct {
+      background-color: #28a745 !important;
+    }
+    #options button.wrong {
+      background-color: #dc3545 !important;
+    }
     #result {
       font-size: 1.2em;
       margin-top: 20px;
@@ -85,11 +88,15 @@
     #restartButton:hover {
       background-color: #0b7dda;
     }
+    #timer {
+      font-size: 1.2em;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>German Language Quiz Game</h1>
+    <h1>FISU Quiz Game (Backend Edition)</h1>
   </header>
   <div id="quizContainer">
     <div id="quizContent">
@@ -97,6 +104,7 @@
       <div id="question-image"></div>
       <div id="options"></div>
       <div id="result"></div>
+      <div id="timer"></div>
     </div>
     <div id="score"></div>
     <button id="restartButton" onclick="restartQuiz()">Restart Quiz</button>
@@ -106,6 +114,9 @@
     let currentIndex = 0;
     let score = 0;
     const maxQuestions = 10;
+    let timerInterval;
+    let timeLeft = 15;
+    let answered = false;
 
     async function loadQuestion() {
       if (currentIndex >= maxQuestions) return showFinalScore();
@@ -120,13 +131,16 @@
 
         const optionsDiv = document.getElementById('options');
         optionsDiv.innerHTML = '';
+        answered = false;
+
         q.options.forEach(option => {
           const btn = document.createElement('button');
           btn.textContent = option;
-          btn.onclick = () => checkAnswer(option, q.correctAnswer); // ✅ FIXED THIS LINE
+          btn.onclick = () => checkAnswer(btn, option, q.correctAnswer);
           optionsDiv.appendChild(btn);
         });
 
+        startTimer(q.correctAnswer);
         currentIndex++;
       } catch (err) {
         console.error('Failed to load question from backend:', err);
@@ -134,7 +148,21 @@
       }
     }
 
-    function checkAnswer(selected, correct) {
+    function checkAnswer(button, selected, correct) {
+      if (answered) return;
+      answered = true;
+      clearInterval(timerInterval);
+
+      const allButtons = document.querySelectorAll('#options button');
+      allButtons.forEach(btn => {
+        btn.disabled = true;
+        if (btn.textContent === correct) {
+          btn.classList.add('correct');
+        } else if (btn.textContent === selected) {
+          btn.classList.add('wrong');
+        }
+      });
+
       const result = document.getElementById('result');
       if (selected === correct) {
         result.textContent = '✅ Correct!';
@@ -142,7 +170,8 @@
       } else {
         result.textContent = `❌ Wrong! Correct answer: ${correct}`;
       }
-      setTimeout(loadQuestion, 1200);
+
+      setTimeout(loadQuestion, 2000);
     }
 
     function showFinalScore() {
@@ -158,6 +187,33 @@
       document.getElementById('score').textContent = '';
       document.getElementById('restartButton').style.display = 'none';
       loadQuestion();
+    }
+
+    function startTimer(correctAnswer) {
+      timeLeft = 15;
+      const timerDisplay = document.getElementById('timer');
+      timerDisplay.textContent = `⏳ Time left: ${timeLeft}s`;
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = `⏳ Time left: ${timeLeft}s`;
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          if (!answered) {
+            const allButtons = document.querySelectorAll('#options button');
+            allButtons.forEach(btn => {
+              btn.disabled = true;
+              if (btn.textContent === correctAnswer) {
+                btn.classList.add('correct');
+              }
+            });
+            document.getElementById('result').textContent = `⏰ Time's up! Correct answer: ${correctAnswer}`;
+            answered = true;
+            setTimeout(loadQuestion, 2000);
+          }
+        }
+      }, 1000);
     }
 
     loadQuestion();
